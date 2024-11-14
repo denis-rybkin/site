@@ -1,0 +1,52 @@
+<!doctype html><html lang="en" data-bs-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Example of converting delegate pattern to async/avait"><meta name="author" content="Denis Rybkin"><meta name="generator" content="Ignite v0.1.0"><title>Convert delegate pattern to async/awaitiOS Development Blog</title><link href="/css/bootstrap.min.css" rel="stylesheet"><link href="/css/prism-default-dark.css" rel="stylesheet"><link href="/css/bootstrap-icons.min.css" rel="stylesheet"><link href="https://denisrybkin.com/articles/2_DelegateToAsync" rel="canonical"><meta property="og:site_name" content="Denis Rybkin"><meta property="og:title" content="Convert delegate pattern to async/await"><meta property="twitter:title" content="Convert delegate pattern to async/await"><meta property="og:description" content="Convert delegate pattern to async/await"><meta name="twitter:description" content="Convert delegate pattern to async/await"><meta property="og:url" content="https://denisrybkin.com/articles/2_DelegateToAsync"><meta name="twitter:domain" content="denisrybkin.com"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:dnt" content="on"></head><body><div class="col-sm-10 mx-auto"><header><nav class="mx-auto navbar navbar-expand-md" style="max-width: 900px"><div class="container-fluid col"><a href="/" class="navbar-brand"><p><pre><code>{ "iOS Development Blog" }
+</code></pre></p></a><button type="button" class="navbar-toggler btn" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button><div id="navbarCollapse" class="collapse navbar-collapse"><ul class="navbar-nav mb-2 mb-md-0 col"></ul></div></div></nav></header><div class="mx-auto" style="max-width: 900px"><h1>Convert delegate pattern to async/await</h1><p><p>Example of converting delegate pattern to async/avait</p><pre><code class="language-swift">// MARK: - Implementation
+
+class Service {
+    private var resultBlock: ((String) -> Void)?
+    func work() async -> String {
+        await withCheckedContinuation { continuation in
+            resultBlock = { result in
+                continuation.resume(returning: result)
+            }
+        }
+    }
+}
+
+extension Service: Delegate {
+    func didComplete(with result: String) {
+        resultBlock?(result)
+    }
+}
+
+protocol Delegate: AnyObject {
+    func didComplete(with result: String)
+}
+
+class Manager {
+    weak var delegate: Delegate?
+    func runResultEvent() {
+        delegate?.didComplete(with: "Apple")
+    }
+}
+
+
+// MARK: - Testing
+
+let service = Service()
+let manager = Manager()
+manager.delegate = service
+Task {
+    try await Task.sleep(for: .seconds(3))
+    print("2. run result")
+    manager.runResultEvent()
+}
+print("1. waiting for result...")
+let result = await service.work()
+print("3. delegate result:", result)
+print("4. done")
+// will print:
+// 1. waiting for result...
+// 2. run result
+// 3. delegate result: Apple
+// 4. done
+</code></pre></p></div></div><script src="/js/bootstrap.bundle.min.js"></script><script src="/js/syntax-highlighting.js"></script></body></html>
