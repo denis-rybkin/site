@@ -1,0 +1,15 @@
+<!doctype html><html lang="en" data-bs-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="There is a Bool.toggle() function which makes code more verbose and obvious. Same thing can be used for Set. If you need to change the state of one of the elements, add or remove it, avoiding boilerplate code. For example if you have filter or settings list in UI."><meta name="author" content="Denis Rybkin"><meta name="generator" content="Ignite v0.1.0"><title>Set improvement using toggleiOS Development Blog</title><link href="/css/bootstrap.min.css" rel="stylesheet"><link href="/css/prism-default-dark.css" rel="stylesheet"><link href="/css/bootstrap-icons.min.css" rel="stylesheet"><link href="https://denisrybkin.com/articles/3_ImproveSetWithToggle" rel="canonical"><meta property="og:site_name" content="Denis Rybkin"><meta property="og:title" content="Set improvement using toggle"><meta property="twitter:title" content="Set improvement using toggle"><meta property="og:description" content="Set improvement using toggle"><meta name="twitter:description" content="Set improvement using toggle"><meta property="og:url" content="https://denisrybkin.com/articles/3_ImproveSetWithToggle"><meta name="twitter:domain" content="denisrybkin.com"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:dnt" content="on"></head><body><div class="col-sm-10 mx-auto"><header><nav class="mx-auto navbar navbar-expand-md" style="max-width: 900px"><div class="container-fluid col"><a href="/" class="navbar-brand"><p><pre><code>{ "iOS Development Blog" }
+</code></pre></p></a><button type="button" class="navbar-toggler btn" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button><div id="navbarCollapse" class="collapse navbar-collapse"><ul class="navbar-nav mb-2 mb-md-0 col"></ul></div></div></nav></header><div class="mx-auto" style="max-width: 900px"><h1>Set improvement using toggle</h1><p><p>There is a Bool.toggle() function which makes code more verbose and obvious. Same thing can be used for Set. If you need to change the state of one of the elements, add or remove it, avoiding boilerplate code. For example if you have filter or settings list in UI.</p><pre><code class="language-swift">extension Set {
+    mutating func toggle(_ element: Element) {
+        if self.contains(element) {
+            self.remove(element)
+        } else {
+            self.insert(element)
+        }
+    }
+}
+
+// how to use it
+itemsSet.toggle(item)
+</code></pre><p>If you don’t want to add an extension, there is a built-in Swift function:</p><pre><code class="language-swift">itemsSet.formSymmetricDifference([item])
+</code></pre></p></div></div><script src="/js/bootstrap.bundle.min.js"></script><script src="/js/syntax-highlighting.js"></script></body></html>
