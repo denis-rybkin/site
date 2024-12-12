@@ -1,0 +1,69 @@
+<!doctype html><html lang="en" data-bs-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Let’s take a look at the simplest implementation of a video player and the result you can achieve."><meta name="author" content="Denis Rybkin"><meta name="generator" content="Ignite v0.1.0"><title>How to embed VideoPlayeriOS Development Blog</title><link href="/css/bootstrap.min.css" rel="stylesheet"><link href="/css/prism-default-dark.css" rel="stylesheet"><link href="/css/bootstrap-icons.min.css" rel="stylesheet"><link href="https://denisrybkin.com/articles/5_Embed_VideoPlayer" rel="canonical"><meta property="og:site_name" content="Denis Rybkin"><meta property="og:title" content="How to embed VideoPlayer"><meta property="twitter:title" content="How to embed VideoPlayer"><meta property="og:description" content="How to embed VideoPlayer"><meta name="twitter:description" content="How to embed VideoPlayer"><meta property="og:url" content="https://denisrybkin.com/articles/5_Embed_VideoPlayer"><meta name="twitter:domain" content="denisrybkin.com"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:dnt" content="on"></head><body><div class="col-sm-10 mx-auto"><header><nav class="mx-auto navbar navbar-expand-md" style="max-width: 900px"><div class="container-fluid col"><a href="/" class="navbar-brand"><p><pre><code>{ "iOS Development Blog" }
+</code></pre></p></a><button type="button" class="navbar-toggler btn" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button><div id="navbarCollapse" class="collapse navbar-collapse"><ul class="navbar-nav mb-2 mb-md-0 col"></ul></div></div></nav></header><div class="mx-auto" style="max-width: 900px"><h1>How to embed VideoPlayer</h1><p><p>Let’s take a look at the simplest implementation of a video player and the result you can achieve.</p><pre><code class="language-swift">VideoPlayer(player: AVPlayer(url: verticalVideo))
+    .clipShape(RoundedRectangle(cornerRadius: 10))
+</code></pre><img src="/images/VideoPlayer/Simulator Screenshot - iPhone 16 - 2024-12-11 at 20.29.30.png" alt="bug preview" width="300" />
+<img src="/images/VideoPlayer/Simulator Screenshot - iPhone 16 - 2024-12-11 at 20.29.55.png" alt="bug preview" width="300" />
+<p>You may notice black bars. These appear because the player tries to fill all the available space. Using modifiers like .scaledToFill(), .scaledToFit(), or .aspectRatio(contentMode:) will not change how the video is displayed within the VideoPlayer. These modifiers only adjust the outer frame of the VideoPlayer, leaving the black areas intact. As of late 2024, there are no obvious ways to manage the VideoPlayer settings directly.An alternative approach is to set a specific aspect ratio for the VideoPlayer frame. To determine the aspect ratio, I suggest using an extension.</p><pre><code class="language-swift">extension URL {
+    func getVideoAspectRatio() async -> CGFloat? {
+        guard let track = try? await AVURLAsset(url: self).loadTracks(withMediaType: .video).first,
+              let resolution = try? await track.load(.naturalSize) else {
+            assertionFailure()
+            return nil
+        }
+        return resolution.width / resolution.height
+    }
+}
+</code></pre><p>An example of how to use it:</p><pre><code class="language-swift">struct VideoPlayerView: View {
+    
+    let videoURL: URL
+    @State var aspectRatio: CGFloat?
+    
+    var body: some View {
+        playerView()
+            .onAppear {
+                setupAspectRatio()
+            }
+    }
+    
+    func playerView() -> some View {
+        VideoPlayer(player: AVPlayer(url: videoURL))
+            .aspectRatio(aspectRatio, contentMode: .fit)
+            .clipShape(RoundedRectangle(cornerRadius: 5))
+    }
+    
+    func setupAspectRatio() {
+        Task {
+            guard let aspectRatio = await videoURL.getVideoAspectRatio() else { return }
+            self.aspectRatio = aspectRatio
+        }
+    }
+    
+}
+</code></pre><p>The result:</p><img src="/images/VideoPlayer/Simulator Screenshot - iPhone 16 - 2024-12-11 at 21.02.56.png" alt="bug preview" width="300" />
+<p>It looks good—now the VideoPlayer frame matches the video dimensions. Let’s test with a vertical video.</p><img src="/images/VideoPlayer/Simulator Screenshot - iPhone 16 - 2024-12-11 at 21.06.43.png" width="300" />
+<p>It looks incorrect. Let’s investigate what’s happening. Place a breakpoint on the line return resolution.width / resolution.height in the extension.</p><img src="/images/VideoPlayer/Screenshot 2024-12-11 at 9.13.53 PM.png" width="900" />
+<p>The resolution indicates that the video is in portrait mode, even though it’s actually not. This happens because the video metadata includes information instructing the video to be displayed rotated. Let’s add another extension to determine if the video has been rotated.</p><pre><code class="language-swift">extension URL {
+    func getVideoAspectRatio() async -> CGFloat? {
+        guard let track = try? await AVURLAsset(url: self).loadTracks(withMediaType: .video).first,
+              let resolution = try? await track.load(.naturalSize) else {
+            assertionFailure()
+            return nil
+        }
+        if await track.isRotated() {
+            return resolution.height / resolution.width
+        }
+        return resolution.width / resolution.height
+    }
+}
+
+extension AVAssetTrack {
+    /// checks if video is rotated, which may result in a changed aspect ratio, for example from 16:9 to 9:16
+    func isRotated() async  -> Bool {
+        guard let transform = try? await self.load(.preferredTransform) else { return false }
+        let isRotated = abs(transform.b) == 1 && abs(transform.c) == 1
+        return isRotated
+    }
+}
+</code></pre><img src="/images/VideoPlayer/Simulator Screenshot - iPhone 16 - 2024-12-11 at 21.22.42.png" width="300" />
+<p>Now the aspect ratio will be determined correctly, taking the metadata into account. Moving forward, it will be quite simple to integrate full-frame video into the app’s interface.</p><img src="/images/VideoPlayer/Simulator Screenshot - iPhone 16 - 2024-12-11 at 21.48.46.png" width="300" />
+</p></div></div><script src="/js/bootstrap.bundle.min.js"></script><script src="/js/syntax-highlighting.js"></script></body></html>
