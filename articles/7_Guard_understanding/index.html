@@ -56,4 +56,13 @@
             }
         }
     }
-</code></pre><p>Explanation of guard:-guard checks a condition.-If the condition is true, the function continues execution.-If the condition is false, the code exits early (e.g., using return).</p><p>By applying guard, the code becomes more linear and easier to follow, reducing the need for deeply nested conditions.This approach improves readability, simplifies debugging, and makes the codebase easier to maintain and extend.</p></p></div></div><script src="/js/bootstrap.bundle.min.js"></script><script src="/js/syntax-highlighting.js"></script></body></html>
+</code></pre><p>Explanation of guard:-guard checks a condition.-If the condition is true, the function continues execution.-If the condition is false, the code exits early (e.g., using return).</p><p>By applying guard, the code becomes more linear and easier to follow, reducing the need for deeply nested conditions.This approach improves readability, simplifies debugging, and makes the codebase easier to maintain and extend.</p><h2>SwiftUI’s @ViewBuilder scope</h2><p>SwiftUI’s @ViewBuilder does not allow the use of guard, so it is not a crime to write ‘if let’ on the entire body of the function.</p><pre><code class="language-swift">    @ViewBuilder
+    func pointView() -> some View {
+        if let point {
+            Circle()
+                .fill(Color.blue)
+                .frame(width: 10, height: 10)
+                .position(startLocation)
+        }
+    }
+</code></pre></p></div></div><script src="/js/bootstrap.bundle.min.js"></script><script src="/js/syntax-highlighting.js"></script></body></html>
