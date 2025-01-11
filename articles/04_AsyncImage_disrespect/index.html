@@ -1,0 +1,50 @@
+<!doctype html><html lang="en" data-bs-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Let’s look at Apple documentation:"><meta name="author" content="Denis Rybkin"><meta name="generator" content="Ignite v0.1.0"><title>How to use AsyncImageiOS Development Blog</title><link href="/css/bootstrap.min.css" rel="stylesheet"><link href="/css/prism-default-dark.css" rel="stylesheet"><link href="/css/bootstrap-icons.min.css" rel="stylesheet"><link href="https://denisrybkin.com/articles/04_AsyncImage_disrespect" rel="canonical"><meta property="og:site_name" content="Denis Rybkin"><meta property="og:title" content="How to use AsyncImage"><meta property="twitter:title" content="How to use AsyncImage"><meta property="og:description" content="How to use AsyncImage"><meta name="twitter:description" content="How to use AsyncImage"><meta property="og:url" content="https://denisrybkin.com/articles/04_AsyncImage_disrespect"><meta name="twitter:domain" content="denisrybkin.com"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:dnt" content="on"></head><body><div class="col-sm-10 mx-auto"><header><nav class="mx-auto navbar navbar-expand-md" style="max-width: 900px"><div class="container-fluid col"><a href="/" class="navbar-brand"><p><pre><code>{ "iOS Development Blog" }
+</code></pre></p></a><button type="button" class="navbar-toggler btn" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button><div id="navbarCollapse" class="collapse navbar-collapse"><ul class="navbar-nav mb-2 mb-md-0 col"></ul></div></div></nav></header><div class="mx-auto" style="max-width: 900px"><h1>How to use AsyncImage</h1><p><p>Let’s look at Apple documentation:</p><h2>1. The most basic example.</h2><pre><code class="language-swift">AsyncImage(url: URL(string: "https://example.com/icon.png"))
+    .frame(width: 200, height: 200)
+</code></pre><p>In this case, .frame changes only layout size, but does not affect the visible image’s size.</p><p>Code for testing:</p><pre><code class="language-swift">struct AsyncImageView: View {
+    
+    var smallImage: URL { imageUrl(pixels: 64) }
+    var bigImage: URL { imageUrl(pixels: 128) }
+    
+    var body: some View {
+        VStack {
+            AsyncImage(url: smallImage)
+                .frame(width: 50, height: 50)
+            AsyncImage(url: bigImage)
+                .frame(width: 50, height: 50)
+        }
+    }
+    
+    func imageUrl(pixels: Int) -> URL {
+        URL(string: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Apple_logo_black.svg/\(pixels)px-Apple_logo_black.svg.png")!
+    }
+}
+</code></pre><p>Without .frame - the created view’s layout size depends on the image resolution. So, this use case for the URL initializer is only applicable when the image resolution is known in advance and guaranteed it will not change in the future. The view is coupled with images urls and resolution, which sounds not good to me. Also instead of using apple documentation you need to explore how to use it by yourself.Definetly not for cases when you need a fast implementation.</p><h2>2. Image and placeholder</h2><pre><code class="language-swift">AsyncImage(url: URL(string: "https://example.com/icon.png")) { image in
+    image.resizable()
+} placeholder: {
+    ProgressView()
+}
+.frame(width: 50, height: 50)
+</code></pre><p>This gives you more control over the layout, independent of fetched image resolution unlike previous example. Image result can apply frame, aspectRatio, etc.However, there is one pitfall. If you use ProgressView as Apple’s docs suggests, and your url is incorrect, you will get an infinite ProgressView spinning.So, the placeholder closure is not intended for a loading indicator. It’s for a placeholder image that will appear initially, then change to the fetched image if it loads successfully. If the image fails to load, the placeholder will remain unchanged.</p><h2>3. Image, loading indicator and error</h2><p>using if-else:</p><pre><code class="language-swift">AsyncImage(url: URL(string: "https://example.com/icon.png")) { phase in
+    if let image = phase.image {
+        image // Displays the loaded image.
+    } else if phase.error != nil {
+        Color.red // Indicates an error.
+    } else {
+        Color.blue // Acts as a placeholder.
+    }
+}
+</code></pre><p>or using an enum:</p><pre><code class="language-swift">AsyncImage(url: URL(string: "https://example.com/icon.png")) { phase in
+    switch phase {
+    case .success(let image):
+        image.resizable()
+            .scaledToFit()
+    case .empty:
+        ProgressView()
+    case .failure:
+        Image(systemName: "exclamationmark.triangle")
+    @unknown default:
+        Image(systemName: "photo")
+    }
+}
+</code></pre><p>Pay attention to the non-obvious naming - .empty case is for loading state.</p></p></div></div><script src="/js/bootstrap.bundle.min.js"></script><script src="/js/syntax-highlighting.js"></script></body></html>

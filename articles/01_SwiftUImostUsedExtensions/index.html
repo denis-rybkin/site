@@ -1,0 +1,58 @@
+<!doctype html><html lang="en" data-bs-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Two of the most useful and frequently used extensions in SwiftUI:"><meta name="author" content="Denis Rybkin"><meta name="generator" content="Ignite v0.1.0"><title>SwiftUI most used extensionsiOS Development Blog</title><link href="/css/bootstrap.min.css" rel="stylesheet"><link href="/css/prism-default-dark.css" rel="stylesheet"><link href="/css/bootstrap-icons.min.css" rel="stylesheet"><link href="https://denisrybkin.com/articles/01_SwiftUImostUsedExtensions" rel="canonical"><meta property="og:site_name" content="Denis Rybkin"><meta property="og:title" content="SwiftUI most used extensions"><meta property="twitter:title" content="SwiftUI most used extensions"><meta property="og:description" content="SwiftUI most used extensions"><meta name="twitter:description" content="SwiftUI most used extensions"><meta property="og:url" content="https://denisrybkin.com/articles/01_SwiftUImostUsedExtensions"><meta name="twitter:domain" content="denisrybkin.com"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:dnt" content="on"></head><body><div class="col-sm-10 mx-auto"><header><nav class="mx-auto navbar navbar-expand-md" style="max-width: 900px"><div class="container-fluid col"><a href="/" class="navbar-brand"><p><pre><code>{ "iOS Development Blog" }
+</code></pre></p></a><button type="button" class="navbar-toggler btn" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button><div id="navbarCollapse" class="collapse navbar-collapse"><ul class="navbar-nav mb-2 mb-md-0 col"></ul></div></div></nav></header><div class="mx-auto" style="max-width: 900px"><h1>SwiftUI most used extensions</h1><p><p>Two of the most useful and frequently used extensions in SwiftUI:</p><h3>1. Layout debug border with .debugBorder() modifier</h3><img src="/images/swiftui_extensions_1.png" alt="bug preview" width="300" />
+<h1></h1><p>Extension:</p><pre><code class="language-swift">// MARK: - Layout debug border
+
+extension View {
+    func debugBorder(_ color: Color = Color.gray.opacity(0.5)) -> some View {
+        modifier(DebugBorder(color))
+    }
+}
+
+struct DebugBorder: ViewModifier {
+    let color: Color
+    init(_ color: Color) {
+        self.color = color
+    }
+    func body(content: Content) -> some View {
+        content
+            .border(color)
+    }
+}
+</code></pre><p>How to use:</p><pre><code class="language-swift">var body: some View {
+    VStack {
+        SomeView()
+            .debugBorder() /// <- place modifier while implementing/debugging
+        AnotherView()
+            .debugBorder(.blue) /// use Color for clarity
+    }
+}
+</code></pre><hr /><h3>2. ViewDidLoad - call setup code once at View opening</h3><p>Often necessary to run some code at the start of your view. Usage .onAppear is not good solution because it can be called multiple times during the view’s lifecicle.View .init is not a good place either because iSwiftUI can call .init many times, this is how SwiftUI works, there is no guarantee that init will be called just once, unlike UIKit, if you are familiar with it.</p><pre><code class="language-swift">// MARK: - viewDidLoad
+
+public extension View {
+    func viewDidLoad(_ action: @escaping () -> ()) -> some View {
+        modifier(ViewDidLoad(action: action))
+    }
+}
+
+private struct ViewDidLoad: ViewModifier {
+    let action: () -> ()
+    @State private var isLoaded = false
+    func body(content: Content) -> some View {
+        content.onAppear {
+            guard !isLoaded else { return }
+            isLoaded = true
+            action()
+        }
+    }
+}
+</code></pre><p>How to use:</p><pre><code class="language-swift">var body: some View {
+    VStack {
+        SomeView()
+        AnotherView()
+    }
+        .viewDidLoad {
+            viewModel.fetchData() // <- this will be called just once
+        }
+}
+</code></pre><hr /><p>Practical test:</p><img src="/images/swiftui_extensions_3.png" alt="bug preview" width="500" />
+<h1></h1><p>Place extensions to the SwiftUI+Extension.swift file in your project.</p></p></div></div><script src="/js/bootstrap.bundle.min.js"></script><script src="/js/syntax-highlighting.js"></script></body></html>

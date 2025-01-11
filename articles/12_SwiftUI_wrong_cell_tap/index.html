@@ -1,0 +1,50 @@
+<!doctype html><html lang="en" data-bs-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="When working with collections, you might encounter a bug where tapping on one cell triggers the onTapGesture of another cell."><meta name="author" content="Denis Rybkin"><meta name="generator" content="Ignite v0.1.0"><title>SwiftUI wrong cell tapiOS Development Blog</title><link href="/css/bootstrap.min.css" rel="stylesheet"><link href="/css/prism-default-dark.css" rel="stylesheet"><link href="/css/bootstrap-icons.min.css" rel="stylesheet"><link href="https://denisrybkin.com/articles/12_SwiftUI_wrong_cell_tap" rel="canonical"><meta property="og:site_name" content="Denis Rybkin"><meta property="og:title" content="SwiftUI wrong cell tap"><meta property="twitter:title" content="SwiftUI wrong cell tap"><meta property="og:description" content="SwiftUI wrong cell tap"><meta name="twitter:description" content="SwiftUI wrong cell tap"><meta property="og:url" content="https://denisrybkin.com/articles/12_SwiftUI_wrong_cell_tap"><meta name="twitter:domain" content="denisrybkin.com"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:dnt" content="on"></head><body><div class="col-sm-10 mx-auto"><header><nav class="mx-auto navbar navbar-expand-md" style="max-width: 900px"><div class="container-fluid col"><a href="/" class="navbar-brand"><p><pre><code>{ "iOS Development Blog" }
+</code></pre></p></a><button type="button" class="navbar-toggler btn" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button><div id="navbarCollapse" class="collapse navbar-collapse"><ul class="navbar-nav mb-2 mb-md-0 col"></ul></div></div></nav></header><div class="mx-auto" style="max-width: 900px"><h1>SwiftUI wrong cell tap</h1><p><p>When working with collections, you might encounter a bug where tapping on one cell triggers the onTapGesture of another cell.</p><img src="/images/article1.mov" alt="bug preview" width="300" />
+<p>This issue can arise due to an incorrect definition of the cell’s tappable area. Let’s take a closer look at what a cell consists of.</p><p>One of the most interesting aspects is the background image and clipShape. If you remove clipShape, it becomes clear why taps might be registered on a different cell. The clipShape does not alter the tappable area. To properly handle the tappable area, you should use contentShape.</p><pre><code class="language-swift">struct Cell: View {
+    let item: Int
+    @State var opacity = 1.0
+    var body: some View {
+        ZStack(alignment: .leading) {
+            Color.clear
+            Text("\(item)")
+                .font(.system(size: 60))
+                .monospacedDigit()
+                .foregroundStyle(.white)
+                .padding(.horizontal)
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(.black.opacity(0.6))
+                )
+                .padding()
+        }
+            .background(
+                Image("image")
+                    .resizable()
+                    .scaledToFill()
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .frame(height: 110)
+            .padding(.horizontal, 10)
+            .opacity(opacity)
+            .onTapGesture {
+                opacity = 0
+                withAnimation {
+                    opacity = 1
+                }
+            }
+    }
+}
+</code></pre><pre><code class="language-swift">struct ContentView: View {
+    
+    @State var items: [Int] = [0, 1, 2]
+    @State var tapped: String?
+    
+    var body: some View {
+        VStack {
+            ForEach(items, id: \.self) { item in
+                Cell(item: item)
+            }
+        }
+    }
+}
+</code></pre></p></div></div><script src="/js/bootstrap.bundle.min.js"></script><script src="/js/syntax-highlighting.js"></script></body></html>
