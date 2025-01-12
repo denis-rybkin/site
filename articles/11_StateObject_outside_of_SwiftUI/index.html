@@ -1,0 +1,122 @@
+<!doctype html><html lang="en" data-bs-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Let’s explore what to do if an existing application has a StateObject and there’s a need to pass events and information from the ApplicationDelegate into it. We’ll use a macOS application as an example since this scenario is more common for it."><meta name="author" content="Denis Rybkin"><meta name="generator" content="Ignite v0.1.0"><title>StateObject Outside of SwiftUIiOS Development Blog</title><link href="/css/bootstrap.min.css" rel="stylesheet"><link href="/css/prism-default-dark.css" rel="stylesheet"><link href="/css/bootstrap-icons.min.css" rel="stylesheet"><link href="https://denisrybkin.com/articles/11_StateObject_outside_of_SwiftUI" rel="canonical"><meta property="og:site_name" content="Denis Rybkin"><meta property="og:title" content="StateObject Outside of SwiftUI"><meta property="twitter:title" content="StateObject Outside of SwiftUI"><meta property="og:description" content="StateObject Outside of SwiftUI"><meta name="twitter:description" content="StateObject Outside of SwiftUI"><meta property="og:url" content="https://denisrybkin.com/articles/11_StateObject_outside_of_SwiftUI"><meta name="twitter:domain" content="denisrybkin.com"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:dnt" content="on"></head><body><div class="col-sm-10 mx-auto"><header><nav class="mx-auto navbar navbar-expand-md" style="max-width: 900px"><div class="container-fluid col"><a href="/" class="navbar-brand"><p><pre><code>{ "iOS Development Blog" }
+</code></pre></p></a><button type="button" class="navbar-toggler btn" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button><div id="navbarCollapse" class="collapse navbar-collapse"><ul class="navbar-nav mb-2 mb-md-0 col"></ul></div></div></nav></header><div class="mx-auto" style="max-width: 900px"><h1>StateObject Outside of SwiftUI</h1><p><p>Let’s explore what to do if an existing application has a StateObject and there’s a need to pass events and information from the ApplicationDelegate into it. We’ll use a macOS application as an example since this scenario is more common for it.</p><pre><code class="language-swift">@main
+struct MacOSApp: App {
+    @StateObject var appState = AppState()
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+                .environmentObject(appState)
+        }
+    }
+}
+
+class AppState: ObservableObject {
+    @Published var count: Int = 0
+}
+
+struct ContentView: View {
+    @EnvironmentObject var appState: AppState
+    var body: some View {
+        Text("Counter: \(appState.count)")
+    }
+}
+</code></pre><p>Let’s add an AppDelegate and pass the ObservableObject to it.</p><pre><code class="language-swift">@main
+struct MacOSApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    @StateObject var appState = AppState()
+    init() {
+        appDelegate.appState = appState
+    }
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+                .environmentObject(appState)
+        }
+    }
+}
+
+class AppState: ObservableObject {
+    @Published var count: Int = 0
+}
+
+struct ContentView: View {
+    @EnvironmentObject var appState: AppState
+    var body: some View {
+        Text("Counter: \(appState.count)")
+    }
+}
+
+class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
+    var appState: AppState?
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        guard let window = NSApplication.shared.windows.first else { return }
+        window.delegate = self
+    }
+    func windowWillStartLiveResize(_ notification: Notification) {
+        appState?.count += 1
+    }
+}
+</code></pre><p>Unfortunately, you cannot pass AppState in init(), so we’ll set it up using late binding. Let’s check how the application works in its current state by resizing the window and expecting the counter to update.The first issue that arises is that the UI does not update, even though windowWillStartLiveResize() was called.</p><img src="/images/observation_1.png" alt="observation" width="700" />
+<img src="/images/observation_2.png" alt="observation" width="300" />
+<p>Notice the red error in the console:</p><p><code>Accessing StateObject's object without being installed on a View. This will create a new instance each time.</code></p><p>Let’s see what’s happening by adding a print statement in the AppState initializer.</p><pre><code class="language-swift">class AppState: ObservableObject {
+    @Published var count: Int = 0
+    init() {
+        print("AppState init")
+    }
+}
+</code></pre><p>Upon launching, the console shows two init calls, which is what the error was warning about. This means the event is being sent to a different instance of AppState that is not tied to the View.</p><img src="/images/observation_3.png" alt="observation" width="150" />
+<p>Let’s try to restrict the creation of a second instance by making AppState a singleton.</p><pre><code class="language-swift">class AppState: ObservableObject {
+    @Published var count: Int = 0
+    private init() {
+        print("AppState init")
+    }
+    static let shared = AppState()
+}
+
+struct MacOSApp: App {
+    // ...
+    @StateObject var appState = AppState.shared
+}
+</code></pre><p>Now, only one instance of the object is created, but the error remains.</p><img src="/images/observation_4.png" alt="observation" width="500" />
+<p>Of course, leaving such an error is unacceptable even if the application works as expected. There’s no guarantee that the application will function correctly in all scenarios in the future. The most elegant solution is to replace the ObservableObject protocol with the @Observable macro — a more modern approach for tracking changes. To do this:</p><ol><li>Remove the ObservableObject protocol.</li><li>Remove the @Published wrappers.</li><li>Add the @Observable macro to the AppState class.</li><li>Remove @StateObject for appState property.</li></ol><pre><code class="language-swift">@main
+struct MacOSApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    let appState = AppState()
+    init() {
+        appDelegate.appState = appState
+    }
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+                .environment(appState)
+        }
+    }
+}
+
+@Observable
+class AppState {
+    var count: Int = 0
+    init() {
+        print("AppState init")
+    }
+}
+
+struct ContentView: View {
+    @Environment(AppState.self) var appState
+    var body: some View {
+        Text("Counter: \(appState.count)")
+    }
+}
+
+class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
+    var appState: AppState?
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        guard let window = NSApplication.shared.windows.first else { return }
+        window.delegate = self
+    }
+    func windowWillStartLiveResize(_ notification: Notification) {
+        appState?.count += 1
+    }
+}
+</code></pre><p>Now we see a clean console without errors, a single instance of the object without using a singleton, and a correctly updating UI.</p><img src="/images/observation_5.png" alt="observation" width="500" />
+</p></div></div><script src="/js/bootstrap.bundle.min.js"></script><script src="/js/syntax-highlighting.js"></script></body></html>
